@@ -4,7 +4,7 @@ import Browser
 import Dict exposing (Dict)
 import Duration exposing (Duration, fromString)
 import Html exposing (Html, br, div, h1, h2, img, input, p, table, tbody, td, text, thead, tr)
-import Html.Attributes exposing (pattern, placeholder, src, type_, value)
+import Html.Attributes exposing (class, pattern, placeholder, src, type_, value)
 import Html.Events exposing (onInput)
 import WitnessExam exposing (..)
 import WitnessExamCollection exposing (..)
@@ -147,6 +147,7 @@ viewProsecutionExamination ( key, exam ) =
         [ td []
             [ input
                 [ type_ "tel"
+                , class "input"
                 , pattern "[0-9]*"
                 , placeholder "direct"
                 , value (WitnessExam.directString exam)
@@ -157,6 +158,7 @@ viewProsecutionExamination ( key, exam ) =
         , td []
             [ input
                 [ type_ "tel"
+                , class "input"
                 , pattern "[0-9]*"
                 , placeholder "cross"
                 , value (WitnessExam.crossString exam)
@@ -167,6 +169,7 @@ viewProsecutionExamination ( key, exam ) =
         , td []
             [ input
                 [ type_ "tel"
+                , class "input"
                 , pattern "[0-9]*"
                 , placeholder "redirect"
                 , value (WitnessExam.redirectString exam)
@@ -182,7 +185,10 @@ viewDefenseExamination ( key, exam ) =
     tr []
         [ td []
             [ input
-                [ placeholder "direct"
+                [ type_ "tel"
+                , class "input"
+                , pattern "[0-9]*"
+                , placeholder "direct"
                 , value (WitnessExam.directString exam)
                 , onInput (UpdateDefenseDirect ( key, exam ))
                 ]
@@ -190,7 +196,10 @@ viewDefenseExamination ( key, exam ) =
             ]
         , td []
             [ input
-                [ placeholder "cross"
+                [ type_ "tel"
+                , class "input"
+                , pattern "[0-9]*"
+                , placeholder "cross"
                 , value (WitnessExam.crossString exam)
                 , onInput (UpdateDefenseCross ( key, exam ))
                 ]
@@ -198,7 +207,10 @@ viewDefenseExamination ( key, exam ) =
             ]
         , td []
             [ input
-                [ placeholder "redirect"
+                [ type_ "tel"
+                , class "input"
+                , pattern "[0-9]*"
+                , placeholder "redirect"
                 , value (WitnessExam.redirectString exam)
                 , onInput (UpdateDefenseRedirect ( key, exam ))
                 ]
