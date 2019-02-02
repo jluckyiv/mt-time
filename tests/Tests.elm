@@ -51,6 +51,9 @@ all =
         , test "toString, zero minutes and leading zero" <|
             \_ ->
                 Expect.equal "0:03" (Duration.toString <| Duration 0 3)
+        , test "toString, zero minutes and zero seconds" <|
+            \_ ->
+                Expect.equal "" (Duration.toString <| Duration 0 0)
         , test "fromSeconds" <|
             \_ ->
                 Expect.equal (Duration 2 13) (Duration.fromSeconds 133)

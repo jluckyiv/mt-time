@@ -2,8 +2,8 @@ module Duration exposing
     ( Duration
     , add
     , empty
-    , fromSeconds
     , fromMinutes
+    , fromSeconds
     , fromString
     , remaining
     , subtract
@@ -67,7 +67,12 @@ toString duration =
         seconds =
             duration.seconds
     in
-    String.fromInt duration.minutes ++ ":" ++ formatSeconds duration.seconds
+    case ( minutes, seconds ) of
+        ( 0, 0 ) ->
+            ""
+
+        _ ->
+            String.fromInt duration.minutes ++ ":" ++ formatSeconds duration.seconds
 
 
 formatSeconds : Int -> String

@@ -1,5 +1,5 @@
-module WitnessExamCollection exposing
-    ( WitnessExamCollection
+module ExamCollection exposing
+    ( ExamCollection
     , combinedDirect
     , new
     , toList
@@ -15,61 +15,61 @@ module WitnessExamCollection exposing
 
 import Dict exposing (Dict)
 import Duration exposing (..)
-import WitnessExam exposing (..)
+import Exam exposing (..)
 
 
-type alias WitnessExamCollection =
-    Dict String WitnessExam
+type alias ExamCollection =
+    Dict String Exam
 
 
-toList : WitnessExamCollection -> List KeyedWitnessExam
+toList : ExamCollection -> List KeyedExam
 toList collection =
     Dict.toList collection
 
 
-new : List String -> WitnessExamCollection
+new : List String -> ExamCollection
 new list =
     list
-        |> List.map (\key -> ( key, WitnessExam.empty ))
+        |> List.map (\key -> ( key, Exam.empty ))
         |> Dict.fromList
 
 
-totalCross : WitnessExamCollection -> Duration
+totalCross : ExamCollection -> Duration
 totalCross collection =
     toList collection
         |> List.map (\( _, exam ) -> cross exam)
         |> List.foldl Duration.add (Duration 0 0)
 
 
-combinedDirect : WitnessExamCollection -> Duration
+combinedDirect : ExamCollection -> Duration
 combinedDirect collection =
     Duration.add (totalDirect collection) (totalRedirect collection)
 
 
-totalDirect : WitnessExamCollection -> Duration
+totalDirect : ExamCollection -> Duration
 totalDirect collection =
     toList collection
         |> List.map (\( _, exam ) -> direct exam)
         |> List.foldl Duration.add (Duration 0 0)
 
 
-totalRedirect : WitnessExamCollection -> Duration
+totalRedirect : ExamCollection -> Duration
 totalRedirect collection =
     toList collection
         |> List.map (\( _, exam ) -> redirect exam)
         |> List.foldl Duration.add (Duration 0 0)
 
 
-updateDirect : Duration -> KeyedWitnessExam -> WitnessExamCollection -> WitnessExamCollection
+updateDirect : Duration -> KeyedExam -> ExamCollection -> ExamCollection
 updateDirect duration ( key, exam ) collection =
     let
         exam_ =
-            WitnessExam.updateDirect duration exam
+            Exam.updateDirect duration exam
     in
     updateCollection key exam_ collection
 
 
-updateDirectWithString : String -> KeyedWitnessExam -> WitnessExamCollection -> WitnessExamCollection
+updateDirectWithString : String -> KeyedExam -> ExamCollection -> ExamCollection
 updateDirectWithString string keyedExam collection =
     let
         result =
@@ -83,16 +83,16 @@ updateDirectWithString string keyedExam collection =
             collection
 
 
-updateRedirect : Duration -> KeyedWitnessExam -> WitnessExamCollection -> WitnessExamCollection
+updateRedirect : Duration -> KeyedExam -> ExamCollection -> ExamCollection
 updateRedirect duration ( key, exam ) collection =
     let
         exam_ =
-            WitnessExam.updateRedirect duration exam
+            Exam.updateRedirect duration exam
     in
     updateCollection key exam_ collection
 
 
-updateRedirectWithString : String -> KeyedWitnessExam -> WitnessExamCollection -> WitnessExamCollection
+updateRedirectWithString : String -> KeyedExam -> ExamCollection -> ExamCollection
 updateRedirectWithString string keyedExam collection =
     let
         result =
@@ -106,16 +106,16 @@ updateRedirectWithString string keyedExam collection =
             collection
 
 
-updateCross : Duration -> KeyedWitnessExam -> WitnessExamCollection -> WitnessExamCollection
+updateCross : Duration -> KeyedExam -> ExamCollection -> ExamCollection
 updateCross duration ( key, exam ) collection =
     let
         exam_ =
-            WitnessExam.updateCross duration exam
+            Exam.updateCross duration exam
     in
     updateCollection key exam_ collection
 
 
-updateCrossWithString : String -> KeyedWitnessExam -> WitnessExamCollection -> WitnessExamCollection
+updateCrossWithString : String -> KeyedExam -> ExamCollection -> ExamCollection
 updateCrossWithString string keyedExam collection =
     let
         result =
@@ -129,6 +129,6 @@ updateCrossWithString string keyedExam collection =
             collection
 
 
-updateCollection : String -> WitnessExam -> WitnessExamCollection -> WitnessExamCollection
+updateCollection : String -> Exam -> ExamCollection -> ExamCollection
 updateCollection key exam collection =
     Dict.update key (\_ -> Just exam) collection
