@@ -4,7 +4,7 @@ import Browser
 import Dict exposing (Dict)
 import Duration exposing (Duration, fromString)
 import Html exposing (Html, br, div, h1, h2, img, input, p, table, tbody, td, text, thead, tr)
-import Html.Attributes exposing (placeholder, src, type_, value)
+import Html.Attributes exposing (pattern, placeholder, src, type_, value)
 import Html.Events exposing (onInput)
 import WitnessExam exposing (..)
 import WitnessExamCollection exposing (..)
@@ -146,7 +146,8 @@ viewProsecutionExamination ( key, exam ) =
     tr []
         [ td []
             [ input
-                [ type_ "number"
+                [ type_ "tel"
+                , pattern "[0-9]*"
                 , placeholder "direct"
                 , value (WitnessExam.directString exam)
                 , onInput (UpdateProsecutionDirect ( key, exam ))
@@ -155,7 +156,8 @@ viewProsecutionExamination ( key, exam ) =
             ]
         , td []
             [ input
-                [ type_ "number"
+                [ type_ "tel"
+                , pattern "[0-9]*"
                 , placeholder "cross"
                 , value (WitnessExam.crossString exam)
                 , onInput (UpdateProsecutionCross ( key, exam ))
@@ -164,7 +166,8 @@ viewProsecutionExamination ( key, exam ) =
             ]
         , td []
             [ input
-                [ type_ "number"
+                [ type_ "tel"
+                , pattern "[0-9]*"
                 , placeholder "redirect"
                 , value (WitnessExam.redirectString exam)
                 , onInput (UpdateProsecutionRedirect ( key, exam ))
