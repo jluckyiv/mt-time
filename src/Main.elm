@@ -4,7 +4,7 @@ import Browser
 import Dict exposing (Dict)
 import Duration exposing (Duration, fromString)
 import Html exposing (Html, br, div, h1, h2, img, input, p, table, tbody, td, text, thead, tr)
-import Html.Attributes exposing (placeholder, src, value)
+import Html.Attributes exposing (placeholder, src, type_, value)
 import Html.Events exposing (onInput)
 import WitnessExam exposing (..)
 import WitnessExamCollection exposing (..)
@@ -59,22 +59,48 @@ update msg model =
             ( model, Cmd.none )
 
         UpdateProsecutionDirect keyedExam string ->
-            ( { model | prosecution = WitnessExamCollection.updateDirectWithString string keyedExam model.prosecution }, Cmd.none )
+            ( { model
+                | prosecution =
+                    WitnessExamCollection.updateDirectWithString string keyedExam model.prosecution
+              }
+            , Cmd.none
+            )
 
         UpdateProsecutionCross keyedExam string ->
-            ( { model | prosecution = WitnessExamCollection.updateCrossWithString string keyedExam model.prosecution }, Cmd.none )
+            ( { model
+                | prosecution =
+                    WitnessExamCollection.updateCrossWithString string keyedExam model.prosecution
+              }
+            , Cmd.none
+            )
 
         UpdateProsecutionRedirect keyedExam string ->
-            ( { model | prosecution = WitnessExamCollection.updateRedirectWithString string keyedExam model.prosecution }, Cmd.none )
+            ( { model
+                | prosecution = WitnessExamCollection.updateRedirectWithString string keyedExam model.prosecution
+              }
+            , Cmd.none
+            )
 
         UpdateDefenseDirect keyedExam string ->
-            ( { model | defense = WitnessExamCollection.updateDirectWithString string keyedExam model.defense }, Cmd.none )
+            ( { model
+                | defense = WitnessExamCollection.updateDirectWithString string keyedExam model.defense
+              }
+            , Cmd.none
+            )
 
         UpdateDefenseCross keyedExam string ->
-            ( { model | defense = WitnessExamCollection.updateCrossWithString string keyedExam model.defense }, Cmd.none )
+            ( { model
+                | defense = WitnessExamCollection.updateCrossWithString string keyedExam model.defense
+              }
+            , Cmd.none
+            )
 
         UpdateDefenseRedirect keyedExam string ->
-            ( { model | defense = WitnessExamCollection.updateRedirectWithString string keyedExam model.defense }, Cmd.none )
+            ( { model
+                | defense = WitnessExamCollection.updateRedirectWithString string keyedExam model.defense
+              }
+            , Cmd.none
+            )
 
 
 updateProsecution exam prosecution =
@@ -118,18 +144,63 @@ viewRemainingCross exam =
 viewProsecutionExamination : KeyedWitnessExam -> Html Msg
 viewProsecutionExamination ( key, exam ) =
     tr []
-        [ td [] [ input [ placeholder "direct", value (WitnessExam.directString exam), onInput (UpdateProsecutionDirect ( key, exam )) ] [] ]
-        , td [] [ input [ placeholder "cross", value (WitnessExam.crossString exam), onInput (UpdateProsecutionCross ( key, exam )) ] [] ]
-        , td [] [ input [ placeholder "redirect", value (WitnessExam.redirectString exam), onInput (UpdateProsecutionRedirect ( key, exam )) ] [] ]
+        [ td []
+            [ input
+                [ type_ "number"
+                , placeholder "direct"
+                , value (WitnessExam.directString exam)
+                , onInput (UpdateProsecutionDirect ( key, exam ))
+                ]
+                []
+            ]
+        , td []
+            [ input
+                [ type_ "number"
+                , placeholder "cross"
+                , value (WitnessExam.crossString exam)
+                , onInput (UpdateProsecutionCross ( key, exam ))
+                ]
+                []
+            ]
+        , td []
+            [ input
+                [ type_ "number"
+                , placeholder "redirect"
+                , value (WitnessExam.redirectString exam)
+                , onInput (UpdateProsecutionRedirect ( key, exam ))
+                ]
+                []
+            ]
         ]
 
 
 viewDefenseExamination : KeyedWitnessExam -> Html Msg
 viewDefenseExamination ( key, exam ) =
     tr []
-        [ td [] [ input [ placeholder "direct", value (WitnessExam.directString exam), onInput (UpdateDefenseDirect ( key, exam )) ] [] ]
-        , td [] [ input [ placeholder "cross", value (WitnessExam.crossString exam), onInput (UpdateDefenseCross ( key, exam )) ] [] ]
-        , td [] [ input [ placeholder "redirect", value (WitnessExam.redirectString exam), onInput (UpdateDefenseRedirect ( key, exam )) ] [] ]
+        [ td []
+            [ input
+                [ placeholder "direct"
+                , value (WitnessExam.directString exam)
+                , onInput (UpdateDefenseDirect ( key, exam ))
+                ]
+                []
+            ]
+        , td []
+            [ input
+                [ placeholder "cross"
+                , value (WitnessExam.crossString exam)
+                , onInput (UpdateDefenseCross ( key, exam ))
+                ]
+                []
+            ]
+        , td []
+            [ input
+                [ placeholder "redirect"
+                , value (WitnessExam.redirectString exam)
+                , onInput (UpdateDefenseRedirect ( key, exam ))
+                ]
+                []
+            ]
         ]
 
 
@@ -158,7 +229,9 @@ view model =
                 , td [] [ text "Redirect" ]
                 ]
             , tbody []
-                (List.map viewProsecutionExamination <| WitnessExamCollection.toList model.prosecution)
+                (List.map viewProsecutionExamination <|
+                    WitnessExamCollection.toList model.prosecution
+                )
             ]
         , p []
             [ text <|
@@ -166,7 +239,9 @@ view model =
                     ++ Duration.toString totalProsecutionDirect
                     ++ " on direct "
                     ++ " and has "
-                    ++ (Duration.toString <| Duration.subtract (Duration.fromMinutes 14) totalProsecutionDirect)
+                    ++ (Duration.toString <|
+                            Duration.subtract (Duration.fromMinutes 14) totalProsecutionDirect
+                       )
                     ++ " remaining"
             ]
         , p []
@@ -175,7 +250,9 @@ view model =
                     ++ Duration.toString totalProsecutionCross
                     ++ " on cross "
                     ++ " and has "
-                    ++ (Duration.toString <| Duration.subtract (Duration.fromMinutes 10) totalProsecutionCross)
+                    ++ (Duration.toString <|
+                            Duration.subtract (Duration.fromMinutes 10) totalProsecutionCross
+                       )
                     ++ " remaining"
             ]
         , div [] [ br [] [] ]
@@ -187,7 +264,9 @@ view model =
                 , td [] [ text "Redirect" ]
                 ]
             , tbody []
-                (List.map viewDefenseExamination <| WitnessExamCollection.toList model.defense)
+                (List.map viewDefenseExamination <|
+                    WitnessExamCollection.toList model.defense
+                )
             ]
         , p []
             [ text <|
@@ -195,7 +274,9 @@ view model =
                     ++ Duration.toString totalDefenseDirect
                     ++ " on direct "
                     ++ " and has "
-                    ++ (Duration.toString <| Duration.subtract (Duration.fromMinutes 14) totalDefenseDirect)
+                    ++ (Duration.toString <|
+                            Duration.subtract (Duration.fromMinutes 14) totalDefenseDirect
+                       )
                     ++ " remaining"
             ]
         , p []
@@ -204,7 +285,9 @@ view model =
                     ++ Duration.toString totalDefenseCross
                     ++ " on cross "
                     ++ " and has "
-                    ++ (Duration.toString <| Duration.subtract (Duration.fromMinutes 10) totalDefenseCross)
+                    ++ (Duration.toString <|
+                            Duration.subtract (Duration.fromMinutes 10) totalDefenseCross
+                       )
                     ++ " remaining"
             ]
         ]
