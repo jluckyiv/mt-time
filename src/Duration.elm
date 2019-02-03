@@ -67,12 +67,7 @@ toString duration =
         seconds =
             duration.seconds
     in
-    case ( minutes, seconds ) of
-        ( 0, 0 ) ->
-            ""
-
-        _ ->
-            String.fromInt duration.minutes ++ ":" ++ formatSeconds duration.seconds
+    String.fromInt duration.minutes ++ ":" ++ formatSeconds duration.seconds
 
 
 formatSeconds : Int -> String

@@ -5,7 +5,7 @@ import Dict exposing (Dict)
 import Duration exposing (Duration, fromString)
 import Exam exposing (..)
 import ExamCollection as Collection exposing (..)
-import Html exposing (Html, div, h1, h2, img, input, p, span, table, tbody, td, text, tfoot, th, thead, tr)
+import Html exposing (Html, br, div, hr, img, input, p, span, table, tbody, td, text, tfoot, th, thead, tr)
 import Html.Attributes exposing (class, pattern, placeholder, src, type_, value)
 import Html.Events exposing (onInput)
 
@@ -62,57 +62,53 @@ update msg model =
         UpdateUI string ->
             ( model, Cmd.none )
 
-        UpdateProsecutionDirect keyedExam string ->
+        UpdateProsecutionDirect keyedExam stringValue ->
             ( { model
                 | prosecution =
-                    updateDirect string keyedExam model.prosecution
+                    updateDirect stringValue keyedExam model.prosecution
               }
             , Cmd.none
             )
 
-        UpdateProsecutionCross keyedExam string ->
+        UpdateProsecutionCross keyedExam stringValue ->
             ( { model
                 | prosecution =
-                    updateCross string keyedExam model.prosecution
+                    updateCross stringValue keyedExam model.prosecution
               }
             , Cmd.none
             )
 
-        UpdateProsecutionRedirect keyedExam string ->
+        UpdateProsecutionRedirect keyedExam stringValue ->
             ( { model
                 | prosecution =
-                    updateRedirect string keyedExam model.prosecution
+                    updateRedirect stringValue keyedExam model.prosecution
               }
             , Cmd.none
             )
 
-        UpdateDefenseDirect keyedExam string ->
+        UpdateDefenseDirect keyedExam stringValue ->
             ( { model
                 | defense =
-                    updateDirect string keyedExam model.defense
+                    updateDirect stringValue keyedExam model.defense
               }
             , Cmd.none
             )
 
-        UpdateDefenseCross keyedExam string ->
+        UpdateDefenseCross keyedExam stringValue ->
             ( { model
                 | defense =
-                    updateCross string keyedExam model.defense
+                    updateCross stringValue keyedExam model.defense
               }
             , Cmd.none
             )
 
-        UpdateDefenseRedirect keyedExam string ->
+        UpdateDefenseRedirect keyedExam stringValue ->
             ( { model
                 | defense =
-                    updateRedirect string keyedExam model.defense
+                    updateRedirect stringValue keyedExam model.defense
               }
             , Cmd.none
             )
-
-
-updateProsecution exam prosecution =
-    prosecution
 
 
 
@@ -121,35 +117,20 @@ updateProsecution exam prosecution =
 
 view : Model -> Html Msg
 view model =
-    let
-        totalProsecutionDirect =
-            Collection.combinedDirect model.prosecution
-
-        totalProsecutionCross =
-            Collection.totalCross model.prosecution
-
-        totalDefenseDirect =
-            Collection.combinedDirect model.defense
-
-        totalDefenseCross =
-            Collection.totalCross model.defense
-    in
-    div []
-        [ div [ class "section" ]
-            [ div [ class "container" ]
-                [ div [ class "title is-5" ] [ text "Prosecution" ]
-                , viewProsecutionExams model
-                , viewRemaining "Prosecution" "direct" totalProsecutionDirect 14
-                , viewRemaining "Defense" "cross" totalProsecutionCross 10
-                ]
+    div [ class "section" ]
+        [ div [ class "container" ]
+            [ div [ class "title is-5" ] [ text "Prosecution" ]
+            , viewProsecutionExams model
+            , viewRemainingDirect "Prosecution" model.prosecution
+            , viewRemainingCross "Defense" model.prosecution
             ]
-        , div [ class "section" ]
-            [ div [ class "container" ]
-                [ div [ class "title is-5" ] [ text "Defense" ]
-                , viewDefenseExams model
-                , viewRemaining "Defense" "direct" totalDefenseDirect 14
-                , viewRemaining "Prosecution" "cross" totalDefenseCross 10
-                ]
+        , br [] []
+        , hr [] []
+        , div [ class "container" ]
+            [ div [ class "title is-5" ] [ text "Defense" ]
+            , viewDefenseExams model
+            , viewRemainingDirect "Defense" model.defense
+            , viewRemainingCross "Prosecution" model.defense
             ]
         ]
 
@@ -174,9 +155,9 @@ viewExaminations viewFunction collection =
 viewExaminationsHead : Html Msg
 viewExaminationsHead =
     thead []
-        [ th [] [ text "Direct" ]
-        , th [] [ text "Cross" ]
-        , th [] [ text "Redirect" ]
+        [ th [ class "has-text-centered" ] [ text "Direct" ]
+        , th [ class "has-text-centered" ] [ text "Cross" ]
+        , th [ class "has-text-centered" ] [ text "Redirect" ]
         ]
 
 
@@ -206,61 +187,53 @@ viewExamination ( key, exam ) ( directMsg, crossMsg, redirectMsg ) =
 
 inputDuration : KeyedExam -> String -> (String -> Msg) -> Html Msg
 inputDuration ( key, exam ) string msg =
+    let
+        value_ =
+            case string of
+                "0:00" ->
+                    ""
+
+                _ ->
+                    string
+    in
     input
         [ type_ "tel"
         , class "input has-text-right"
         , pattern "[0-9]*"
-        , value string
+        , value value_
         , onInput msg
         ]
         []
 
 
-viewRemaining : String -> String -> Duration -> Int -> Html Msg
-viewRemaining side examType total max =
-    p []
-        [ text <|
-            side
-                ++ " has used "
-                ++ Duration.toString total
-                ++ " on "
-                ++ examType
-                ++ " and has "
-                ++ (Duration.toString <|
-                        Duration.subtract (Duration.fromMinutes max) total
-                   )
-                ++ " remaining."
+viewRemainingDirect side collection =
+    viewRemaining side "direct" 14 (Collection.combinedDirect collection)
+
+
+viewRemainingCross side collection =
+    viewRemaining side "cross" 10 (Collection.totalCross collection)
+
+
+viewRemaining : String -> String -> Int -> Duration -> Html Msg
+viewRemaining side examType max totalDuration =
+    let
+        used =
+            Duration.toString totalDuration
+
+        remaining =
+            Duration.toString <|
+                Duration.subtract (Duration.fromMinutes max) totalDuration
+    in
+    div [ class "container" ]
+        [ span [ class "has-text-weight-bold" ] [ text side ]
+        , span [] [ text " has used " ]
+        , span [ class "has-text-weight-bold" ] [ text used ]
+        , span [] [ text " on " ]
+        , span [ class "has-text-weight-bold" ] [ text examType ]
+        , span [] [ text " and has " ]
+        , span [ class "has-text-weight-bold" ] [ text remaining ]
+        , span [] [ text " remaining." ]
         ]
-
-
-viewTotalDirect : Exam -> Html Msg
-viewTotalDirect exam =
-    Exam.totalDirect exam
-        |> Duration.toString
-        |> text
-
-
-viewRemainingDirect : Exam -> Html Msg
-viewRemainingDirect exam =
-    Exam.totalDirect exam
-        |> Duration.subtract (Duration 14 0)
-        |> Duration.toString
-        |> text
-
-
-viewTotalCross : Exam -> Html Msg
-viewTotalCross exam =
-    Exam.cross exam
-        |> Duration.toString
-        |> text
-
-
-viewRemainingCross : Exam -> Html Msg
-viewRemainingCross exam =
-    Exam.cross exam
-        |> Duration.subtract (Duration 10 0)
-        |> Duration.toString
-        |> text
 
 
 updateDirect string keyedExam collection =
