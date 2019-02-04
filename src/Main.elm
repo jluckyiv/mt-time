@@ -47,7 +47,7 @@ init : String -> ( Model, Cmd Msg )
 init flags =
     let
         result =
-            Debug.log "flags" <| fromJson flags
+            fromJson flags
     in
     case result of
         Ok model ->
@@ -212,7 +212,7 @@ view model =
 
 clearButton : Html Msg
 clearButton =
-    div [ class "container"]
+    div [ class "container" ]
         [ button [ class "button is-primary", onClick ToggleModal ] [ text "Clear" ]
         ]
 
