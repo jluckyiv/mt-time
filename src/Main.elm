@@ -212,7 +212,7 @@ view model =
 
 clearButton : Html Msg
 clearButton =
-    div [ class "container" ]
+    div [ class "container"]
         [ button [ class "button is-primary", onClick ToggleModal ] [ text "Clear" ]
         ]
 

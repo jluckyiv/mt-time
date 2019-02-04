@@ -4,7 +4,7 @@ import registerServiceWorker from "./registerServiceWorker";
 
 const app = Elm.Main.init({
   node: document.getElementById("root"),
-  flags: localStorage.getItem("cache") || "{}"
+  flags: localStorage.getItem("cache") || ""
 });
 
 app.ports.cache.subscribe(function(data) {
