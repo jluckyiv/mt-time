@@ -5,9 +5,9 @@ import Dict exposing (Dict)
 import Duration exposing (Duration, fromString)
 import Exam exposing (..)
 import ExamCollection as Collection exposing (..)
-import Html exposing (Html, br, div, hr, img, input, p, span, table, tbody, td, text, tfoot, th, thead, tr)
-import Html.Attributes exposing (class, pattern, placeholder, src, type_, value)
-import Html.Events exposing (onInput)
+import Html exposing (Html, br, button, div, footer, header, hr, img, input, p, section, span, table, tbody, td, text, tfoot, th, thead, tr)
+import Html.Attributes exposing (attribute, class, pattern, placeholder, src, type_, value)
+import Html.Events exposing (onClick, onInput)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (required)
 import Json.Encode as Encode exposing (Value, encode, object)
@@ -29,6 +29,7 @@ type alias UpdateCollectionMsg =
 type alias Model =
     { prosecution : ExamCollection
     , defense : ExamCollection
+    , modalIsOpen : Bool
     }
 
 
@@ -38,6 +39,7 @@ initModel =
         Collection.new [ "P1", "P2", "P3", "P4" ]
     , defense =
         Collection.new [ "P1", "P2", "P3", "P4" ]
+    , modalIsOpen = False
     }
 
 
@@ -74,6 +76,7 @@ encodeModel model =
     object
         [ ( "prosecution", Collection.encodeCollection model.prosecution )
         , ( "defense", Collection.encodeCollection model.defense )
+        , ( "modalIsOpen", Encode.bool model.modalIsOpen )
         ]
 
 
@@ -82,6 +85,7 @@ modelDecoder =
     Decode.succeed Model
         |> required "prosecution" Collection.collectionDecoder
         |> required "defense" Collection.collectionDecoder
+        |> required "modalIsOpen" Decode.bool
 
 
 fromJson =
@@ -98,6 +102,8 @@ fromValue =
 
 type Msg
     = NoOp
+    | ClearModel
+    | ToggleModal
     | UpdateProsecutionDirect KeyedExam String
     | UpdateProsecutionCross KeyedExam String
     | UpdateProsecutionRedirect KeyedExam String
@@ -112,6 +118,22 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
+        ClearModel ->
+            let
+                model_ =
+                    initModel
+            in
+            ( model_, cacheModel model_ )
+
+        ToggleModal ->
+            let
+                model_ =
+                    { model
+                        | modalIsOpen = not model.modalIsOpen
+                    }
+            in
+            ( model_, cacheModel model_ )
+
         UpdateProsecutionDirect keyedExam stringValue ->
             let
                 model_ =
@@ -120,7 +142,7 @@ update msg model =
                             updateDirect stringValue keyedExam model.prosecution
                     }
             in
-            ( model_, cacheModel model )
+            ( model_, cacheModel model_ )
 
         UpdateProsecutionCross keyedExam stringValue ->
             let
@@ -159,18 +181,17 @@ update msg model =
                             updateCross stringValue keyedExam model.defense
                     }
             in
-            ( model_, cacheModel model_)
+            ( model_, cacheModel model_ )
 
         UpdateDefenseRedirect keyedExam stringValue ->
             let
-                model_ = 
+                model_ =
                     { model
                         | defense =
                             updateRedirect stringValue keyedExam model.defense
                     }
             in
-            
-            ( model_, cacheModel model_)
+            ( model_, cacheModel model_ )
 
 
 
@@ -183,7 +204,44 @@ view model =
         [ viewPartyWorksheet model Prosecution
         , viewSeparator
         , viewPartyWorksheet model Defense
+        , viewSeparator
+        , clearButton
+        , viewModal model.modalIsOpen
         ]
+
+
+clearButton : Html Msg
+clearButton =
+    div [ class "container"]
+        [ button [ class "button is-primary", onClick ToggleModal ] [ text "Clear" ]
+        ]
+
+
+viewModal : Bool -> Html Msg
+viewModal modalIsOpen =
+    case modalIsOpen of
+        True ->
+            div [ class "modal is-active" ]
+                [ div [ class "modal-background", onClick ToggleModal ] []
+                , div [ class "modal-card" ]
+                    [ header [ class "modal-card-head" ]
+                        [ p [ class "modal-card-title" ]
+                            [ text "Clear" ]
+                        , button [ attribute "aria-label" "close", class "delete", onClick ToggleModal ] []
+                        ]
+                    , section [ class "modal-card-body" ]
+                        [ text "This will clear all values." ]
+                    , footer [ class "modal-card-foot" ]
+                        [ button [ class "button is-danger", onClick ClearModel ]
+                            [ text "Clear" ]
+                        , button [ class "button", onClick ToggleModal ]
+                            [ text "Cancel" ]
+                        ]
+                    ]
+                ]
+
+        False ->
+            text ""
 
 
 viewSeparator : Html msg
