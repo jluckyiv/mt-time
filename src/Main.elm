@@ -1,4 +1,4 @@
-module Main exposing (Model, Msg(..), init, main, update, view)
+port module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
 import Dict exposing (Dict)
@@ -8,10 +8,18 @@ import ExamCollection as Collection exposing (..)
 import Html exposing (Html, br, div, hr, img, input, p, span, table, tbody, td, text, tfoot, th, thead, tr)
 import Html.Attributes exposing (class, pattern, placeholder, src, type_, value)
 import Html.Events exposing (onInput)
+import Json.Decode as Decode exposing (Decoder)
+import Json.Decode.Pipeline exposing (required)
+import Json.Encode as Encode exposing (Value, encode, object)
 
 
 
 ---- MODEL ----
+
+
+type Party
+    = Prosecution
+    | Defense
 
 
 type alias UpdateCollectionMsg =
@@ -33,9 +41,55 @@ initModel =
     }
 
 
-init : ( Model, Cmd Msg )
-init =
-    ( initModel, Cmd.none )
+init : String -> ( Model, Cmd Msg )
+init flags =
+    let
+        result =
+            Debug.log "flags" <| fromJson flags
+    in
+    case result of
+        Ok model ->
+            ( model, Cmd.none )
+
+        Err _ ->
+            ( initModel, Cmd.none )
+
+
+
+---- INTEROP ----
+
+
+cacheModel : Model -> Cmd Msg
+cacheModel model =
+    model
+        |> encodeModel
+        |> cache
+
+
+port cache : Value -> Cmd msg
+
+
+encodeModel : Model -> Value
+encodeModel model =
+    object
+        [ ( "prosecution", Collection.encodeCollection model.prosecution )
+        , ( "defense", Collection.encodeCollection model.defense )
+        ]
+
+
+modelDecoder : Decoder Model
+modelDecoder =
+    Decode.succeed Model
+        |> required "prosecution" Collection.collectionDecoder
+        |> required "defense" Collection.collectionDecoder
+
+
+fromJson =
+    Decode.decodeString modelDecoder
+
+
+fromValue =
+    Decode.decodeValue modelDecoder
 
 
 
@@ -44,7 +98,6 @@ init =
 
 type Msg
     = NoOp
-    | UpdateUI String
     | UpdateProsecutionDirect KeyedExam String
     | UpdateProsecutionCross KeyedExam String
     | UpdateProsecutionRedirect KeyedExam String
@@ -59,56 +112,65 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
-        UpdateUI string ->
-            ( model, Cmd.none )
-
         UpdateProsecutionDirect keyedExam stringValue ->
-            ( { model
-                | prosecution =
-                    updateDirect stringValue keyedExam model.prosecution
-              }
-            , Cmd.none
-            )
+            let
+                model_ =
+                    { model
+                        | prosecution =
+                            updateDirect stringValue keyedExam model.prosecution
+                    }
+            in
+            ( model_, cacheModel model )
 
         UpdateProsecutionCross keyedExam stringValue ->
-            ( { model
-                | prosecution =
-                    updateCross stringValue keyedExam model.prosecution
-              }
-            , Cmd.none
-            )
+            let
+                model_ =
+                    { model
+                        | prosecution = updateCross stringValue keyedExam model.prosecution
+                    }
+            in
+            ( model_, cacheModel model_ )
 
         UpdateProsecutionRedirect keyedExam stringValue ->
-            ( { model
-                | prosecution =
-                    updateRedirect stringValue keyedExam model.prosecution
-              }
-            , Cmd.none
-            )
+            let
+                model_ =
+                    { model
+                        | prosecution =
+                            updateRedirect stringValue keyedExam model.prosecution
+                    }
+            in
+            ( model_, cacheModel model_ )
 
         UpdateDefenseDirect keyedExam stringValue ->
-            ( { model
-                | defense =
-                    updateDirect stringValue keyedExam model.defense
-              }
-            , Cmd.none
-            )
+            let
+                model_ =
+                    { model
+                        | defense =
+                            updateDirect stringValue keyedExam model.defense
+                    }
+            in
+            ( model_, cacheModel model_ )
 
         UpdateDefenseCross keyedExam stringValue ->
-            ( { model
-                | defense =
-                    updateCross stringValue keyedExam model.defense
-              }
-            , Cmd.none
-            )
+            let
+                model_ =
+                    { model
+                        | defense =
+                            updateCross stringValue keyedExam model.defense
+                    }
+            in
+            ( model_, cacheModel model_)
 
         UpdateDefenseRedirect keyedExam stringValue ->
-            ( { model
-                | defense =
-                    updateRedirect stringValue keyedExam model.defense
-              }
-            , Cmd.none
-            )
+            let
+                model_ = 
+                    { model
+                        | defense =
+                            updateRedirect stringValue keyedExam model.defense
+                    }
+            in
+            
+            ( model_, cacheModel model_)
 
 
 
@@ -118,31 +180,41 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div [ class "section" ]
-        [ div [ class "container" ]
-            [ div [ class "title is-5" ] [ text "Prosecution" ]
-            , viewProsecutionExams model
-            , viewRemainingDirect "Prosecution" model.prosecution
-            , viewRemainingCross "Defense" model.prosecution
-            ]
-        , br [] []
-        , hr [] []
-        , div [ class "container" ]
-            [ div [ class "title is-5" ] [ text "Defense" ]
-            , viewDefenseExams model
-            , viewRemainingDirect "Defense" model.defense
-            , viewRemainingCross "Prosecution" model.defense
-            ]
+        [ viewPartyWorksheet model Prosecution
+        , viewSeparator
+        , viewPartyWorksheet model Defense
         ]
 
 
-viewDefenseExams : Model -> Html Msg
-viewDefenseExams model =
-    viewExaminations viewDefenseExamination model.defense
+viewSeparator : Html msg
+viewSeparator =
+    div []
+        [ br [] []
+        , hr [] []
+        ]
 
 
-viewProsecutionExams : Model -> Html Msg
-viewProsecutionExams model =
-    viewExaminations viewProsecutionExamination model.prosecution
+viewPartyWorksheet : Model -> Party -> Html Msg
+viewPartyWorksheet model party =
+    let
+        partyString =
+            partyToString party
+
+        opponentString =
+            opponentToString party
+
+        collection_ =
+            partyCollection model party
+
+        viewExamFunction_ =
+            viewExamFunction party
+    in
+    div [ class "container" ]
+        [ div [ class "title is-5" ] [ text partyString ]
+        , viewExamFunction_ model
+        , viewRemainingDirect partyString collection_
+        , viewRemainingCross opponentString collection_
+        ]
 
 
 viewExaminations viewFunction collection =
@@ -207,7 +279,7 @@ inputDuration ( key, exam ) string msg =
 
 
 viewRemainingDirect side collection =
-    viewRemaining side "direct" 14 (Collection.combinedDirect collection)
+    viewRemaining side "direct" 14 (Collection.totalCombinedDirect collection)
 
 
 viewRemainingCross side collection =
@@ -224,7 +296,7 @@ viewRemaining side examType max totalDuration =
             Duration.toString <|
                 Duration.subtract (Duration.fromMinutes max) totalDuration
     in
-    div [ class "container" ]
+    p []
         [ span [ class "has-text-weight-bold" ] [ text side ]
         , span [] [ text " has used " ]
         , span [ class "has-text-weight-bold" ] [ text used ]
@@ -234,6 +306,65 @@ viewRemaining side examType max totalDuration =
         , span [ class "has-text-weight-bold" ] [ text remaining ]
         , span [] [ text " remaining." ]
         ]
+
+
+
+---- HELPERS ----
+
+
+partyToString : Party -> String
+partyToString party_ =
+    case party_ of
+        Prosecution ->
+            "Prosecution"
+
+        Defense ->
+            "Defense"
+
+
+opponentToString : Party -> String
+opponentToString party_ =
+    party_ |> opponent |> partyToString
+
+
+opponent : Party -> Party
+opponent party_ =
+    case party_ of
+        Prosecution ->
+            Defense
+
+        Defense ->
+            Prosecution
+
+
+partyCollection : Model -> Party -> ExamCollection
+partyCollection model party =
+    case party of
+        Prosecution ->
+            model.prosecution
+
+        Defense ->
+            model.defense
+
+
+viewExamFunction : Party -> (Model -> Html Msg)
+viewExamFunction party =
+    case party of
+        Prosecution ->
+            viewProsecutionExams
+
+        Defense ->
+            viewDefenseExams
+
+
+viewDefenseExams : Model -> Html Msg
+viewDefenseExams model =
+    viewExaminations viewDefenseExamination model.defense
+
+
+viewProsecutionExams : Model -> Html Msg
+viewProsecutionExams model =
+    viewExaminations viewProsecutionExamination model.prosecution
 
 
 updateDirect string keyedExam collection =
@@ -252,11 +383,11 @@ updateRedirect string keyedExam collection =
 ---- PROGRAM ----
 
 
-main : Program () Model Msg
+main : Program String Model Msg
 main =
     Browser.element
         { view = view
-        , init = \_ -> init
+        , init = init
         , update = update
         , subscriptions = always Sub.none
         }

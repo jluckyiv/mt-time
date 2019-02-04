@@ -1,10 +1,14 @@
 module ExamCollection exposing
     ( ExamCollection
-    , combinedDirect
+    , collectionDecoder
+    , encodeCollection
+    , fromJson
+    , fromValue
     , new
+    , toJson
     , toList
+    , totalCombinedDirect
     , totalCross
-    , totalDirect
     , updateCross
     , updateCrossWithString
     , updateDirect
@@ -16,6 +20,9 @@ module ExamCollection exposing
 import Dict exposing (Dict)
 import Duration exposing (..)
 import Exam exposing (..)
+import Json.Decode as Decode exposing (Decoder)
+import Json.Decode.Pipeline exposing (required)
+import Json.Encode as Encode exposing (Value, dict, encode)
 
 
 type alias ExamCollection =
@@ -41,8 +48,8 @@ totalCross collection =
         |> List.foldl Duration.add (Duration 0 0)
 
 
-combinedDirect : ExamCollection -> Duration
-combinedDirect collection =
+totalCombinedDirect : ExamCollection -> Duration
+totalCombinedDirect collection =
     Duration.add (totalDirect collection) (totalRedirect collection)
 
 
@@ -132,3 +139,26 @@ updateCrossWithString string keyedExam collection =
 updateCollection : String -> Exam -> ExamCollection -> ExamCollection
 updateCollection key exam collection =
     Dict.update key (\_ -> Just exam) collection
+
+
+encodeCollection : ExamCollection -> Value
+encodeCollection collection =
+    dict identity Exam.encodeExam collection
+
+
+toJson : ExamCollection -> String
+toJson collection =
+    encode 0 (encodeCollection collection)
+
+
+collectionDecoder : Decoder ExamCollection
+collectionDecoder =
+    Decode.dict Exam.examDecoder
+
+
+fromJson =
+    Decode.decodeString collectionDecoder
+
+
+fromValue =
+    Decode.decodeValue collectionDecoder

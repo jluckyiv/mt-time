@@ -1,6 +1,8 @@
 module Tests exposing (all)
 
 import Duration exposing (..)
+import Exam exposing (..)
+import ExamCollection exposing (..)
 import Expect
 import Test exposing (..)
 
@@ -79,5 +81,54 @@ all =
                         , Duration 1 0
                         , Duration 0 33
                         ]
+                    )
+        , test "encode duration" <|
+            \_ ->
+                Expect.equal
+                    "{\"minutes\":1,\"seconds\":0}"
+                    (Duration 1 0 |> Duration.toJson)
+        , test "decode duration value" <|
+            \_ ->
+                Expect.equal
+                    (Ok (Duration 1 0))
+                    (Duration 1 0 |> Duration.encodeDuration |> Duration.fromValue)
+        , test "decode duration JSON" <|
+            \_ ->
+                Expect.equal
+                    (Ok (Duration 1 0))
+                    ("{\"minutes\":1,\"seconds\":0}" |> Duration.fromJson)
+        , test "encode exam" <|
+            \_ ->
+                Expect.equal
+                    "{\"direct\":{\"minutes\":0,\"seconds\":0},\"cross\":{\"minutes\":0,\"seconds\":0},\"redirect\":{\"minutes\":0,\"seconds\":0}}"
+                    (Exam.empty |> Exam.toJson)
+        , test "decode exam value" <|
+            \_ ->
+                Expect.equal
+                    (Ok Exam.empty)
+                    (Exam.empty |> Exam.encodeExam |> Exam.fromValue)
+        , test "decode exam JSON" <|
+            \_ ->
+                Expect.equal
+                    (Ok Exam.empty)
+                    ("{\"direct\":{\"minutes\":0,\"seconds\":0},\"cross\":{\"minutes\":0,\"seconds\":0},\"redirect\":{\"minutes\":0,\"seconds\":0}}"
+                        |> Exam.fromJson
+                    )
+        , test "encode collection" <|
+            \_ ->
+                Expect.equal
+                    "{\"P1\":{\"direct\":{\"minutes\":0,\"seconds\":0},\"cross\":{\"minutes\":0,\"seconds\":0},\"redirect\":{\"minutes\":0,\"seconds\":0}},\"P2\":{\"direct\":{\"minutes\":0,\"seconds\":0},\"cross\":{\"minutes\":0,\"seconds\":0},\"redirect\":{\"minutes\":0,\"seconds\":0}},\"P3\":{\"direct\":{\"minutes\":0,\"seconds\":0},\"cross\":{\"minutes\":0,\"seconds\":0},\"redirect\":{\"minutes\":0,\"seconds\":0}},\"P4\":{\"direct\":{\"minutes\":0,\"seconds\":0},\"cross\":{\"minutes\":0,\"seconds\":0},\"redirect\":{\"minutes\":0,\"seconds\":0}}}"
+                    (ExamCollection.new [ "P1", "P2", "P3", "P4" ] |> ExamCollection.toJson)
+        , test "decode collection value" <|
+            \_ ->
+                Expect.equal
+                    (Ok (ExamCollection.new [ "P1", "P2", "P3", "P4" ]))
+                    (ExamCollection.new [ "P1", "P2", "P3", "P4" ] |> ExamCollection.encodeCollection |> ExamCollection.fromValue)
+        , test "decode collection JSON" <|
+            \_ ->
+                Expect.equal
+                    (Ok (ExamCollection.new [ "P1", "P2", "P3", "P4" ]))
+                    ("{\"P1\":{\"direct\":{\"minutes\":0,\"seconds\":0},\"cross\":{\"minutes\":0,\"seconds\":0},\"redirect\":{\"minutes\":0,\"seconds\":0}},\"P2\":{\"direct\":{\"minutes\":0,\"seconds\":0},\"cross\":{\"minutes\":0,\"seconds\":0},\"redirect\":{\"minutes\":0,\"seconds\":0}},\"P3\":{\"direct\":{\"minutes\":0,\"seconds\":0},\"cross\":{\"minutes\":0,\"seconds\":0},\"redirect\":{\"minutes\":0,\"seconds\":0}},\"P4\":{\"direct\":{\"minutes\":0,\"seconds\":0},\"cross\":{\"minutes\":0,\"seconds\":0},\"redirect\":{\"minutes\":0,\"seconds\":0}}}"
+                        |> ExamCollection.fromJson
                     )
         ]

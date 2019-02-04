@@ -1,13 +1,18 @@
 module Exam exposing
-    ( KeyedExam
-    , Exam
+    ( Exam
+    , KeyedExam
     , cross
     , crossString
     , direct
     , directString
     , empty
+    , encodeExam
+    , examDecoder
+    , fromJson
+    , fromValue
     , redirect
     , redirectString
+    , toJson
     , totalDirect
     , updateCross
     , updateDirect
@@ -15,6 +20,9 @@ module Exam exposing
     )
 
 import Duration exposing (..)
+import Json.Decode as Decode exposing (Decoder)
+import Json.Decode.Pipeline exposing (required)
+import Json.Encode as Encode exposing (Value, encode, object)
 
 
 type alias Direct =
@@ -96,3 +104,33 @@ crossString exam =
 totalDirect : Exam -> Duration
 totalDirect exam =
     Duration.add (direct exam) (redirect exam)
+
+
+encodeExam : Exam -> Value
+encodeExam exam =
+    object
+        [ ( "direct", Duration.encodeDuration (direct exam) )
+        , ( "cross", Duration.encodeDuration (cross exam) )
+        , ( "redirect", Duration.encodeDuration (redirect exam) )
+        ]
+
+
+toJson : Exam -> String
+toJson exam =
+    encode 0 (encodeExam exam)
+
+
+examDecoder : Decoder Exam
+examDecoder =
+    Decode.succeed Exam
+        |> required "direct" Duration.durationDecoder
+        |> required "cross" Duration.durationDecoder
+        |> required "redirect" Duration.durationDecoder
+
+
+fromJson =
+    Decode.decodeString examDecoder
+
+
+fromValue =
+    Decode.decodeValue examDecoder

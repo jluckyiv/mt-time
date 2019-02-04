@@ -1,16 +1,24 @@
 module Duration exposing
     ( Duration
     , add
+    , durationDecoder
+    , encodeDuration
     , empty
+    , fromJson
     , fromMinutes
     , fromSeconds
     , fromString
+    , fromValue
     , remaining
     , subtract
+    , toJson
     , toSeconds
     , toString
     )
 
+import Json.Decode as Decode exposing (Decoder)
+import Json.Decode.Pipeline exposing (required)
+import Json.Encode as Encode exposing (Value, encode, object)
 import Parser exposing (..)
 
 
@@ -136,3 +144,31 @@ fromBase100 num =
 parseDuration : Parser Duration
 parseDuration =
     succeed fromBase100 |= int
+
+
+encodeDuration : Duration -> Value
+encodeDuration duration =
+    object
+        [ ( "minutes", Encode.int duration.minutes )
+        , ( "seconds", Encode.int duration.seconds )
+        ]
+
+
+toJson : Duration -> String
+toJson duration =
+    encode 0 (encodeDuration duration)
+
+
+durationDecoder : Decoder Duration
+durationDecoder =
+    Decode.succeed Duration
+        |> required "minutes" Decode.int
+        |> required "seconds" Decode.int
+
+
+fromJson =
+    Decode.decodeString durationDecoder
+
+
+fromValue =
+    Decode.decodeValue durationDecoder
