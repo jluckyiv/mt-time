@@ -5,8 +5,44 @@ import Dict exposing (Dict)
 import Duration exposing (Duration, fromString)
 import Exam exposing (..)
 import ExamCollection as Collection exposing (..)
-import Html exposing (Html, br, button, div, footer, header, hr, img, input, p, section, span, table, tbody, td, text, tfoot, th, thead, tr)
-import Html.Attributes exposing (attribute, class, pattern, placeholder, src, type_, value)
+import Html
+    exposing
+        ( Html
+        , a
+        , br
+        , button
+        , div
+        , footer
+        , header
+        , hr
+        , i
+        , img
+        , input
+        , li
+        , p
+        , section
+        , span
+        , table
+        , tbody
+        , td
+        , text
+        , tfoot
+        , th
+        , thead
+        , tr
+        , ul
+        )
+import Html.Attributes
+    exposing
+        ( attribute
+        , class
+        , pattern
+        , placeholder
+        , src
+        , style
+        , type_
+        , value
+        )
 import Html.Events exposing (onClick, onInput)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (required)
@@ -30,6 +66,7 @@ type alias Model =
     { prosecution : ExamCollection
     , defense : ExamCollection
     , modalIsOpen : Bool
+    , currentTab : Party
     }
 
 
@@ -38,8 +75,9 @@ initModel =
     { prosecution =
         Collection.new [ "P1", "P2", "P3", "P4" ]
     , defense =
-        Collection.new [ "P1", "P2", "P3", "P4" ]
+        Collection.new [ "D1", "D2", "D3", "D4" ]
     , modalIsOpen = False
+    , currentTab = Prosecution
     }
 
 
@@ -77,7 +115,18 @@ encodeModel model =
         [ ( "prosecution", Collection.encodeCollection model.prosecution )
         , ( "defense", Collection.encodeCollection model.defense )
         , ( "modalIsOpen", Encode.bool model.modalIsOpen )
+        , ( "currentTab", encodeParty model.currentTab )
         ]
+
+
+encodeParty : Party -> Value
+encodeParty party =
+    case party of
+        Defense ->
+            Encode.string "Defense"
+
+        _ ->
+            Encode.string "Prosecution"
 
 
 modelDecoder : Decoder Model
@@ -86,6 +135,21 @@ modelDecoder =
         |> required "prosecution" Collection.collectionDecoder
         |> required "defense" Collection.collectionDecoder
         |> required "modalIsOpen" Decode.bool
+        |> required "currentTab" partyDecoder
+
+
+partyDecoder : Decoder Party
+partyDecoder =
+    Decode.string
+        |> Decode.andThen
+            (\str ->
+                case str of
+                    "Defense" ->
+                        Decode.succeed Defense
+
+                    _ ->
+                        Decode.succeed Prosecution
+            )
 
 
 fromJson =
@@ -104,6 +168,7 @@ type Msg
     = NoOp
     | ClearModel
     | ToggleModal
+    | ToggleCurrentTab
     | UpdateProsecutionDirect KeyedExam String
     | UpdateProsecutionCross KeyedExam String
     | UpdateProsecutionRedirect KeyedExam String
@@ -124,6 +189,18 @@ update msg model =
                     initModel
             in
             ( model_, cacheModel model_ )
+
+        ToggleCurrentTab ->
+            let
+                currentTab_ =
+                    case model.currentTab of
+                        Prosecution ->
+                            Defense
+
+                        Defense ->
+                            Prosecution
+            in
+            ( { model | currentTab = currentTab_ }, Cmd.none )
 
         ToggleModal ->
             let
@@ -201,19 +278,50 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div [ class "section" ]
-        [ viewPartyWorksheet model Prosecution
-        , viewSeparator
-        , viewPartyWorksheet model Defense
-        , viewSeparator
-        , clearButton
+        [ viewTabs model.currentTab
+        , viewPartyWorksheet model
         , viewModal model.modalIsOpen
         ]
 
 
+viewTabs : Party -> Html Msg
+viewTabs party =
+    let
+        ( prosecutionClass, defenseClass ) =
+            tabClasses party
+    in
+    div [ class "tabs is-boxed" ]
+        [ ul []
+            [ li [ class prosecutionClass ]
+                [ a [ onClick ToggleCurrentTab ]
+                    [ text "Prosecution" ]
+                ]
+            , li [ class defenseClass ]
+                [ a [ onClick ToggleCurrentTab ]
+                    [ text "Defense" ]
+                ]
+            , clearButton
+            ]
+        ]
+
+
+tabClasses : Party -> ( String, String )
+tabClasses party =
+    case party of
+        Prosecution ->
+            ( "is-active", "" )
+
+        Defense ->
+            ( "", "is-active" )
+
+
 clearButton : Html Msg
 clearButton =
-    div [ class "container"]
-        [ button [ class "button is-primary", onClick ToggleModal ] [ text "Clear" ]
+    li []
+        [ a [ class "has-text-danger", onClick ToggleModal ]
+            [ span [ class "icon is-small" ] [ i [ class "fas fa-trash-alt" ] [] ]
+            , span [] [ text "Clear" ]
+            ]
         ]
 
 
@@ -226,12 +334,12 @@ viewModal modalIsOpen =
                 , div [ class "modal-card" ]
                     [ header [ class "modal-card-head" ]
                         [ p [ class "modal-card-title" ]
-                            [ text "Clear" ]
+                            [ text "Are you sure?" ]
                         , button [ attribute "aria-label" "close", class "delete", onClick ToggleModal ] []
                         ]
                     , section [ class "modal-card-body" ]
-                        [ text "This will clear all values." ]
-                    , footer [ class "modal-card-foot" ]
+                        [ text "This will clear the worksheet." ]
+                    , footer [ class "modal-card-foot" , style "justify-content" "flex-end"]
                         [ button [ class "button is-danger", onClick ClearModel ]
                             [ text "Clear" ]
                         , button [ class "button", onClick ToggleModal ]
@@ -246,15 +354,15 @@ viewModal modalIsOpen =
 
 viewSeparator : Html msg
 viewSeparator =
-    div []
-        [ br [] []
-        , hr [] []
-        ]
+    hr [] []
 
 
-viewPartyWorksheet : Model -> Party -> Html Msg
-viewPartyWorksheet model party =
+viewPartyWorksheet : Model -> Html Msg
+viewPartyWorksheet model =
     let
+        party =
+            model.currentTab
+
         partyString =
             partyToString party
 
@@ -264,13 +372,12 @@ viewPartyWorksheet model party =
         collection_ =
             partyCollection model party
 
-        viewExamFunction_ =
-            viewExamFunction party
     in
     div [ class "container" ]
-        [ div [ class "title is-5" ] [ text partyString ]
-        , viewExamFunction_ model
+        [ div [ class "title is-5" ] [ text (partyString ++ " witnesses") ]
+        , viewExamFunction party model
         , viewRemainingDirect partyString collection_
+        , viewSeparator
         , viewRemainingCross opponentString collection_
         ]
 
@@ -366,6 +473,26 @@ viewRemaining side examType max totalDuration =
         ]
 
 
+viewExamFunction : Party -> (Model -> Html Msg)
+viewExamFunction party =
+    case party of
+        Prosecution ->
+            viewProsecutionExams
+
+        Defense ->
+            viewDefenseExams
+
+
+viewDefenseExams : Model -> Html Msg
+viewDefenseExams model =
+    viewExaminations viewDefenseExamination model.defense
+
+
+viewProsecutionExams : Model -> Html Msg
+viewProsecutionExams model =
+    viewExaminations viewProsecutionExamination model.prosecution
+
+
 
 ---- HELPERS ----
 
@@ -403,26 +530,6 @@ partyCollection model party =
 
         Defense ->
             model.defense
-
-
-viewExamFunction : Party -> (Model -> Html Msg)
-viewExamFunction party =
-    case party of
-        Prosecution ->
-            viewProsecutionExams
-
-        Defense ->
-            viewDefenseExams
-
-
-viewDefenseExams : Model -> Html Msg
-viewDefenseExams model =
-    viewExaminations viewDefenseExamination model.defense
-
-
-viewProsecutionExams : Model -> Html Msg
-viewProsecutionExams model =
-    viewExaminations viewProsecutionExamination model.prosecution
 
 
 updateDirect string keyedExam collection =
