@@ -339,7 +339,7 @@ viewModal modalIsOpen =
                         ]
                     , section [ class "modal-card-body" ]
                         [ text "This will clear the worksheet." ]
-                    , footer [ class "modal-card-foot" , style "justify-content" "flex-end"]
+                    , footer [ class "modal-card-foot", style "justify-content" "flex-end" ]
                         [ button [ class "button is-danger", onClick ClearModel ]
                             [ text "Clear" ]
                         , button [ class "button", onClick ToggleModal ]
@@ -371,13 +371,13 @@ viewPartyWorksheet model =
 
         collection_ =
             partyCollection model party
-
     in
     div [ class "container" ]
         [ div [ class "title is-5" ] [ text (partyString ++ " witnesses") ]
         , viewExamFunction party model
         , viewRemainingDirect partyString collection_
-        , viewSeparator
+
+        -- , viewSeparator
         , viewRemainingCross opponentString collection_
         ]
 
@@ -460,6 +460,18 @@ viewRemaining side examType max totalDuration =
         remaining =
             Duration.toString <|
                 Duration.subtract (Duration.fromMinutes max) totalDuration
+
+        twoMinuteWarning =
+            Duration.toString <|
+                Duration.subtract (Duration.fromMinutes <| max - 2) totalDuration
+
+        oneMinuteWarning =
+            Duration.toString <|
+                Duration.subtract (Duration.fromMinutes <| max - 1) totalDuration
+
+        thirtySecondWarning =
+            Duration.toString <|
+                Duration.subtract (Duration.fromSeconds <| max * 60 - 30) totalDuration
     in
     p []
         [ span [ class "has-text-weight-bold" ] [ text side ]
@@ -469,7 +481,11 @@ viewRemaining side examType max totalDuration =
         , span [ class "has-text-weight-bold" ] [ text examType ]
         , span [] [ text " and has " ]
         , span [ class "has-text-weight-bold" ] [ text remaining ]
-        , span [] [ text " remaining." ]
+        , span [] [ text " remaining. " ]
+        , span [ class "has-text-black has-text-weight-bold has-background-info" ] [ text <| "\u{00A0}" ++ twoMinuteWarning ++ "\u{00A0}" ]
+        , span [ class "has-text-black has-text-weight-bold has-background-primary" ] [ text <| "\u{00A0}" ++ oneMinuteWarning ++ "\u{00A0}" ]
+        , span [ class "has-text-black has-text-weight-bold has-background-warning" ] [ text <| "\u{00A0}" ++ thirtySecondWarning ++ "\u{00A0}" ]
+        , span [ class "has-text-white has-text-weight-bold has-background-danger" ] [ text <| "\u{00A0}" ++ remaining ++ "\u{00A0}" ]
         ]
 
 
