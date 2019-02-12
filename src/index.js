@@ -3,12 +3,12 @@ import { Elm } from "./Main.elm";
 import registerServiceWorker from "./registerServiceWorker";
 
 const readCache = function() {
-  return localStorage.getItem("cache");
+  return JSON.parse(localStorage.getItem("cache"));
 };
 
 const app = Elm.Main.init({
-  node: document.getElementById("root")
-  // flags: readCache() || ""
+  node: document.getElementById("root"),
+  flags: readCache()
 });
 
 app.ports.requestData.subscribe(function(data) {

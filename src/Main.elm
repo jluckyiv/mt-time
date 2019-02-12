@@ -47,7 +47,7 @@ import Json.Encode as Encode exposing (Value, object)
 ---- PROGRAM ----
 
 
-main : Program () Model Msg
+main : Program (Maybe Value) Model Msg
 main =
     Browser.element
         { init = init
@@ -61,9 +61,14 @@ main =
 ---- MODEL ----
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
-    ( initModel, requestData () )
+init : Maybe Value -> ( Model, Cmd Msg )
+init maybeFlags =
+    case maybeFlags of
+        Nothing ->
+            ( initModel, requestData () )
+
+        Just value ->
+            ( fromValue value, Cmd.none )
 
 
 initModel : Model
@@ -94,6 +99,20 @@ type ExamType
     = Direct
     | Cross
     | Redirect
+
+
+fromValue : Value -> Model
+fromValue value =
+    let
+        result =
+            Decode.decodeValue modelDecoder value
+    in
+    case result of
+        Ok model ->
+            model
+
+        Err _ ->
+            initModel
 
 
 fromJson : String -> Model
@@ -142,7 +161,7 @@ stringToPartyDecoder string =
 type Msg
     = NoOp
     | ClearModel
-    | ReceiveCache String
+    | ReceiveCache Value
     | ToggleClearDialog
     | ToggleParty
     | UpdateProsecutionDirect WitnessExam String
@@ -166,8 +185,8 @@ update msg model =
             in
             ( model_, saveData model_ )
 
-        ReceiveCache json ->
-            ( fromJson json, Cmd.none )
+        ReceiveCache value ->
+            ( fromValue value, Cmd.none )
 
         ToggleClearDialog ->
             let
@@ -484,7 +503,7 @@ subscriptions _ =
     receiveData ReceiveCache
 
 
-port receiveData : (String -> msg) -> Sub msg
+port receiveData : (Value -> msg) -> Sub msg
 
 
 port requestData : () -> Cmd msg
