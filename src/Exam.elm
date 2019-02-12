@@ -1,6 +1,6 @@
 module Exam exposing
     ( Exam
-    , KeyedExam
+    , WitnessExam
     , cross
     , crossString
     , direct
@@ -19,10 +19,10 @@ module Exam exposing
     , updateRedirect
     )
 
-import Duration exposing (..)
+import Duration exposing (Duration)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (required)
-import Json.Encode as Encode exposing (Value, encode, object)
+import Json.Encode exposing (Value, encode, object)
 
 
 type alias Direct =
@@ -41,7 +41,7 @@ type Exam
     = Exam Direct Cross Redirect
 
 
-type alias KeyedExam =
+type alias WitnessExam =
     ( String, Exam )
 
 
@@ -128,9 +128,11 @@ examDecoder =
         |> required "redirect" Duration.durationDecoder
 
 
+fromJson : String -> Result Decode.Error Exam
 fromJson =
     Decode.decodeString examDecoder
 
 
+fromValue : Value -> Result Decode.Error Exam
 fromValue =
     Decode.decodeValue examDecoder

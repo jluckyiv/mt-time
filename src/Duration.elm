@@ -2,8 +2,8 @@ module Duration exposing
     ( Duration
     , add
     , durationDecoder
-    , encodeDuration
     , empty
+    , encodeDuration
     , fromJson
     , fromMinutes
     , fromSeconds
@@ -19,11 +19,13 @@ module Duration exposing
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (required)
 import Json.Encode as Encode exposing (Value, encode, object)
-import Parser exposing (..)
+import Parser exposing ((|=), DeadEnd, Parser, int, succeed)
 
 
 type alias Duration =
-    { minutes : Minutes, seconds : Seconds }
+    { minutes : Minutes
+    , seconds : Seconds
+    }
 
 
 type alias Minutes =
@@ -52,11 +54,13 @@ parse str =
             s |> Parser.run parseDuration
 
 
+removeColon : String -> String
 removeColon string =
     string
         |> String.replace ":" ""
 
 
+removeLeadingZeroes : String -> String
 removeLeadingZeroes string =
     if String.startsWith "0" string then
         String.dropLeft 1 string
@@ -68,14 +72,7 @@ removeLeadingZeroes string =
 
 toString : Duration -> String
 toString duration =
-    let
-        minutes =
-            duration.minutes
-
-        seconds =
-            duration.seconds
-    in
-    String.fromInt duration.minutes ++ ":" ++ formatSeconds duration.seconds
+    formatMinutes duration.minutes ++ ":" ++ formatSeconds duration.seconds
 
 
 formatSeconds : Int -> String
@@ -166,9 +163,11 @@ durationDecoder =
         |> required "seconds" Decode.int
 
 
+fromJson : String -> Result Decode.Error Duration
 fromJson =
     Decode.decodeString durationDecoder
 
 
+fromValue : Value -> Result Decode.Error Duration
 fromValue =
     Decode.decodeValue durationDecoder
