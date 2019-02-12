@@ -49,7 +49,7 @@ import Json.Encode as Encode exposing (Value, object)
 
 main : Program (Maybe Value) Model Msg
 main =
-    Browser.element
+    Browser.document
         { init = init
         , update = update
         , view = view
@@ -249,13 +249,17 @@ update msg model =
 ---- VIEW ----
 
 
-view : Model -> Html Msg
+view : Model -> Browser.Document Msg
 view model =
-    div [ class "section" ]
-        [ viewTabs model
-        , viewPartyCaseInChief model
-        , viewClearDialog model.clearDialogIsActive
+    { title = "RMT Timer | " ++ partyString model.party
+    , body =
+        [ div [ class "section" ]
+            [ viewTabs model
+            , viewPartyCaseInChief model
+            , viewClearDialog model.clearDialogIsActive
+            ]
         ]
+    }
 
 
 viewTabs : Model -> Html Msg
@@ -558,12 +562,19 @@ examTypeToString examType =
 
 partyHtml : Party -> Html msg
 partyHtml party =
+    party
+    |> partyString
+    |> text
+
+
+partyString : Party -> String
+partyString party =
     case party of
         Prosecution ->
-            text "Prosecution"
+            "Prosecution"
 
         Defense ->
-            text "Defense"
+            "Defense"
 
 
 opponent : Party -> Party
