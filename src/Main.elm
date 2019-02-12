@@ -44,7 +44,37 @@ import Json.Encode as Encode exposing (Value, object)
 
 
 
+---- PROGRAM ----
+
+
+main : Program () Model Msg
+main =
+    Browser.element
+        { init = init
+        , update = update
+        , view = view
+        , subscriptions = subscriptions
+        }
+
+
+
 ---- MODEL ----
+
+
+init : () -> ( Model, Cmd Msg )
+init _ =
+    ( initModel, requestData () )
+
+
+initModel : Model
+initModel =
+    { prosecution =
+        CaseInChief.new [ "P1", "P2", "P3", "P4" ]
+    , defense =
+        CaseInChief.new [ "D1", "D2", "D3", "D4" ]
+    , clearDialogIsActive = False
+    , party = Prosecution
+    }
 
 
 type alias Model =
@@ -66,29 +96,43 @@ type ExamType
     | Redirect
 
 
-initModel : Model
-initModel =
-    { prosecution =
-        CaseInChief.new [ "P1", "P2", "P3", "P4" ]
-    , defense =
-        CaseInChief.new [ "D1", "D2", "D3", "D4" ]
-    , clearDialogIsActive = False
-    , party = Prosecution
-    }
-
-
-init : String -> ( Model, Cmd Msg )
-init flags =
+fromJson : String -> Model
+fromJson json =
     let
         result =
-            fromJson flags
+            Decode.decodeString modelDecoder json
     in
     case result of
         Ok model ->
-            ( model, Cmd.none )
+            model
 
         Err _ ->
-            ( initModel, Cmd.none )
+            initModel
+
+
+modelDecoder : Decoder Model
+modelDecoder =
+    Decode.succeed Model
+        |> required "prosecution" CaseInChief.caseInChiefDecoder
+        |> required "defense" CaseInChief.caseInChiefDecoder
+        |> required "clearDialogIsActive" Decode.bool
+        |> required "currentTab" partyDecoder
+
+
+partyDecoder : Decoder Party
+partyDecoder =
+    Decode.string
+        |> Decode.andThen stringToPartyDecoder
+
+
+stringToPartyDecoder : String -> Decoder Party
+stringToPartyDecoder string =
+    case string of
+        "Defense" ->
+            Decode.succeed Defense
+
+        _ ->
+            Decode.succeed Prosecution
 
 
 
@@ -98,6 +142,7 @@ init flags =
 type Msg
     = NoOp
     | ClearModel
+    | ReceiveCache String
     | ToggleClearDialog
     | ToggleParty
     | UpdateProsecutionDirect WitnessExam String
@@ -112,14 +157,17 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         NoOp ->
-            ( model, Cmd.none )
+            ( model, requestData () )
 
         ClearModel ->
             let
                 model_ =
                     initModel
             in
-            ( model_, cacheModel model_ )
+            ( model_, saveData model_ )
+
+        ReceiveCache json ->
+            ( fromJson json, Cmd.none )
 
         ToggleClearDialog ->
             let
@@ -133,49 +181,49 @@ update msg model =
                 model_ =
                     toggleParty model
             in
-            ( model_, cacheModel model_ )
+            ( model_, saveData model_ )
 
         UpdateProsecutionDirect witnessExam string ->
             let
                 model_ =
                     updateExam string Prosecution Direct witnessExam model
             in
-            ( model_, cacheModel model_ )
+            ( model_, saveData model_ )
 
         UpdateProsecutionCross witnessExam string ->
             let
                 model_ =
                     updateExam string Prosecution Cross witnessExam model
             in
-            ( model_, cacheModel model_ )
+            ( model_, saveData model_ )
 
         UpdateProsecutionRedirect witnessExam string ->
             let
                 model_ =
                     updateExam string Prosecution Redirect witnessExam model
             in
-            ( model_, cacheModel model_ )
+            ( model_, saveData model_ )
 
         UpdateDefenseDirect witnessExam string ->
             let
                 model_ =
                     updateExam string Defense Direct witnessExam model
             in
-            ( model_, cacheModel model_ )
+            ( model_, saveData model_ )
 
         UpdateDefenseCross witnessExam string ->
             let
                 model_ =
                     updateExam string Defense Cross witnessExam model
             in
-            ( model_, cacheModel model_ )
+            ( model_, saveData model_ )
 
         UpdateDefenseRedirect witnessExam string ->
             let
                 model_ =
                     updateExam string Defense Redirect witnessExam model
             in
-            ( model_, cacheModel model_ )
+            ( model_, saveData model_ )
 
 
 
@@ -428,31 +476,28 @@ viewRemaining party examType minutes totalDuration =
 
 
 
----- PROGRAM ----
-
-
-main : Program String Model Msg
-main =
-    Browser.element
-        { view = view
-        , init = init
-        , update = update
-        , subscriptions = always Sub.none
-        }
-
-
-
 ---- INTEROP ----
 
 
-port cache : Value -> Cmd msg
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    receiveData ReceiveCache
 
 
-cacheModel : Model -> Cmd Msg
-cacheModel model =
+port receiveData : (String -> msg) -> Sub msg
+
+
+port requestData : () -> Cmd msg
+
+
+port sendData : Value -> Cmd msg
+
+
+saveData : Model -> Cmd Msg
+saveData model =
     model
         |> encodeModel
-        |> cache
+        |> sendData
 
 
 encodeModel : Model -> Value
@@ -473,36 +518,6 @@ encodeParty party =
 
         _ ->
             Encode.string "Prosecution"
-
-
-modelDecoder : Decoder Model
-modelDecoder =
-    Decode.succeed Model
-        |> required "prosecution" CaseInChief.caseInChiefDecoder
-        |> required "defense" CaseInChief.caseInChiefDecoder
-        |> required "clearDialogIsActive" Decode.bool
-        |> required "currentTab" partyDecoder
-
-
-partyDecoder : Decoder Party
-partyDecoder =
-    Decode.string
-        |> Decode.andThen stringToPartyDecoder
-
-
-stringToPartyDecoder : String -> Decoder Party
-stringToPartyDecoder string =
-    case string of
-        "Defense" ->
-            Decode.succeed Defense
-
-        _ ->
-            Decode.succeed Prosecution
-
-
-fromJson : String -> Result Decode.Error Model
-fromJson =
-    Decode.decodeString modelDecoder
 
 
 
