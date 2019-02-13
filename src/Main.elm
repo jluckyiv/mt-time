@@ -1,6 +1,7 @@
 port module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
+import Browser.Navigation as Nav
 import CaseInChief exposing (CaseInChief)
 import Duration exposing (Duration)
 import Exam exposing (WitnessExam)
@@ -32,6 +33,7 @@ import Html.Attributes
         ( attribute
         , class
         , classList
+        , href
         , pattern
         , style
         , type_
@@ -39,8 +41,10 @@ import Html.Attributes
         )
 import Html.Events exposing (onClick, onInput)
 import Json.Decode as Decode exposing (Decoder)
-import Json.Decode.Pipeline exposing (required)
+import Json.Decode.Pipeline exposing (hardcoded, required)
 import Json.Encode as Encode exposing (Value, object)
+import Url
+import Url.Parser exposing ((</>), Parser, map, oneOf, parse, s, string, top)
 
 
 
@@ -49,8 +53,10 @@ import Json.Encode as Encode exposing (Value, object)
 
 main : Program (Maybe Value) Model Msg
 main =
-    Browser.document
+    Browser.application
         { init = init
+        , onUrlChange = UrlChanged
+        , onUrlRequest = LinkClicked
         , update = update
         , view = view
         , subscriptions = subscriptions
@@ -61,29 +67,32 @@ main =
 ---- MODEL ----
 
 
-init : Maybe Value -> ( Model, Cmd Msg )
-init maybeFlags =
+init : Maybe Value -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init maybeFlags url key =
     case maybeFlags of
         Nothing ->
-            ( initModel, requestData () )
+            ( initModel (parseParty url) key, requestData Nothing )
 
         Just value ->
-            ( fromValue value, Cmd.none )
+            ( fromValue key value, Cmd.none )
 
 
-initModel : Model
-initModel =
-    { prosecution =
+initModel : Party -> Nav.Key -> Model
+initModel party key =
+    { key = key
+    , party = party
+    , prosecution =
         CaseInChief.new [ "P1", "P2", "P3", "P4" ]
     , defense =
         CaseInChief.new [ "D1", "D2", "D3", "D4" ]
     , clearDialogIsActive = False
-    , party = Prosecution
     }
 
 
 type alias Model =
-    { prosecution : CaseInChief
+    
+    { key : Nav.Key
+    , prosecution : CaseInChief
     , defense : CaseInChief
     , clearDialogIsActive : Bool
     , party : Party
@@ -101,37 +110,59 @@ type ExamType
     | Redirect
 
 
-fromValue : Value -> Model
-fromValue value =
+parseParty : Url.Url -> Party
+parseParty url =
+    case parse matchers url of
+        Just party ->
+            party
+
+        Nothing ->
+            Prosecution
+
+
+
+matchers : Parser (Party -> a) a
+matchers =
+    oneOf
+        [ map Prosecution (s "Prosecution")
+        , map Prosecution top
+        , map Defense (s "Defense")
+        , map Prosecution (s "Clear")
+        ]
+
+
+fromValue : Nav.Key -> Value -> Model
+fromValue key value =
     let
         result =
-            Decode.decodeValue modelDecoder value
+            Decode.decodeValue (modelDecoder key) value
     in
     case result of
         Ok model ->
             model
 
         Err _ ->
-            initModel
+            initModel Prosecution key
 
 
-fromJson : String -> Model
-fromJson json =
+fromJson : Url.Url -> Nav.Key -> String -> Model
+fromJson url key json =
     let
         result =
-            Decode.decodeString modelDecoder json
+            Decode.decodeString (modelDecoder key) json
     in
     case result of
         Ok model ->
             model
 
         Err _ ->
-            initModel
+            initModel Prosecution key
 
 
-modelDecoder : Decoder Model
-modelDecoder =
+modelDecoder : Nav.Key -> Decoder Model
+modelDecoder key =
     Decode.succeed Model
+        |> hardcoded key
         |> required "prosecution" CaseInChief.caseInChiefDecoder
         |> required "defense" CaseInChief.caseInChiefDecoder
         |> required "clearDialogIsActive" Decode.bool
@@ -161,32 +192,44 @@ stringToPartyDecoder string =
 type Msg
     = NoOp
     | ClearModel
+    | LinkClicked Browser.UrlRequest
     | ReceiveCache Value
     | ToggleClearDialog
-    | ToggleParty
     | UpdateProsecutionDirect WitnessExam String
     | UpdateProsecutionCross WitnessExam String
     | UpdateProsecutionRedirect WitnessExam String
     | UpdateDefenseDirect WitnessExam String
     | UpdateDefenseCross WitnessExam String
     | UpdateDefenseRedirect WitnessExam String
+    | UrlChanged Url.Url
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         NoOp ->
-            ( model, requestData () )
+            ( model, Cmd.none )
+
+        LinkClicked urlRequest ->
+            case urlRequest of
+                Browser.Internal url ->
+                    ( model, Nav.pushUrl model.key (Url.toString url) )
+
+                Browser.External href ->
+                    ( model, Nav.load href )
+
+        UrlChanged url ->
+            ( { model | party = parseParty url }, Cmd.none )
 
         ClearModel ->
             let
                 model_ =
-                    initModel
+                    initModel Prosecution model.key
             in
             ( model_, saveData model_ )
 
         ReceiveCache value ->
-            ( fromValue value, Cmd.none )
+            ( fromValue model.key value, Cmd.none )
 
         ToggleClearDialog ->
             let
@@ -194,13 +237,6 @@ update msg model =
                     toggleClearDialog model
             in
             ( model_, Cmd.none )
-
-        ToggleParty ->
-            let
-                model_ =
-                    toggleParty model
-            in
-            ( model_, saveData model_ )
 
         UpdateProsecutionDirect witnessExam string ->
             let
@@ -280,7 +316,7 @@ partyTab party activeParty =
             party == activeParty
     in
     li [ classList [ ( "is-active", isActive ) ] ]
-        [ a [ onClick ToggleParty ]
+        [ a [ href (partyString party) ]
             [ partyHtml party ]
         ]
 
@@ -289,9 +325,9 @@ clearDialogTab : Model -> Html Msg
 clearDialogTab model =
     if
         model.prosecution
-            == initModel.prosecution
+            == CaseInChief.new [ "P1", "P2", "P3", "P4" ]
             && model.defense
-            == initModel.defense
+            == CaseInChief.new [ "D1", "D2", "D3", "D4" ]
     then
         text ""
 
@@ -510,7 +546,7 @@ subscriptions _ =
 port receiveData : (Value -> msg) -> Sub msg
 
 
-port requestData : () -> Cmd msg
+port requestData : Maybe String -> Cmd msg
 
 
 port sendData : Value -> Cmd msg
@@ -563,8 +599,8 @@ examTypeToString examType =
 partyHtml : Party -> Html msg
 partyHtml party =
     party
-    |> partyString
-    |> text
+        |> partyString
+        |> text
 
 
 partyString : Party -> String
