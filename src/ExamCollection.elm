@@ -1,7 +1,7 @@
 module ExamCollection exposing
     ( ExamCollection
-    , collectionDecoder
-    , encodeCollection
+    , decoder
+    , encode
     , fromJson
     , fromValue
     , new
@@ -19,14 +19,13 @@ module ExamCollection exposing
 
 import Dict exposing (Dict)
 import Duration exposing (..)
-import Exam exposing (..)
-import Json.Decode as Decode exposing (Decoder)
-import Json.Decode.Pipeline exposing (required)
-import Json.Encode as Encode exposing (Value, dict, encode)
+import Json.Decode as Decode exposing (Decoder, Error)
+import Json.Encode as Encode exposing (Value, dict)
+import WitnessExam as Exam exposing (KeyedExam, WitnessExam)
 
 
 type alias ExamCollection =
-    Dict String Exam
+    Dict String WitnessExam
 
 
 toList : ExamCollection -> List KeyedExam
@@ -44,8 +43,8 @@ new list =
 totalCross : ExamCollection -> Duration
 totalCross collection =
     toList collection
-        |> List.map (\( _, exam ) -> cross exam)
-        |> List.foldl Duration.add (Duration 0 0)
+        |> List.map (\( _, exam ) -> Exam.cross exam |> Exam.toDuration)
+        |> List.foldl Duration.add Duration.zero
 
 
 totalCombinedDirect : ExamCollection -> Duration
@@ -56,15 +55,15 @@ totalCombinedDirect collection =
 totalDirect : ExamCollection -> Duration
 totalDirect collection =
     toList collection
-        |> List.map (\( _, exam ) -> direct exam)
-        |> List.foldl Duration.add (Duration 0 0)
+        |> List.map (\( _, exam ) -> Exam.direct exam |> Exam.toDuration)
+        |> List.foldl Duration.add Duration.zero
 
 
 totalRedirect : ExamCollection -> Duration
 totalRedirect collection =
     toList collection
-        |> List.map (\( _, exam ) -> redirect exam)
-        |> List.foldl Duration.add (Duration 0 0)
+        |> List.map (\( _, exam ) -> Exam.redirect exam |> Exam.toDuration)
+        |> List.foldl Duration.add Duration.zero
 
 
 updateDirect : Duration -> KeyedExam -> ExamCollection -> ExamCollection
@@ -136,29 +135,31 @@ updateCrossWithString string keyedExam collection =
             collection
 
 
-updateCollection : String -> Exam -> ExamCollection -> ExamCollection
+updateCollection : String -> WitnessExam -> ExamCollection -> ExamCollection
 updateCollection key exam collection =
     Dict.update key (\_ -> Just exam) collection
 
 
-encodeCollection : ExamCollection -> Value
-encodeCollection collection =
-    dict identity Exam.encodeExam collection
+encode : ExamCollection -> Value
+encode collection =
+    dict identity Exam.encode collection
 
 
 toJson : ExamCollection -> String
 toJson collection =
-    encode 0 (encodeCollection collection)
+    Encode.encode 0 (encode collection)
 
 
-collectionDecoder : Decoder ExamCollection
-collectionDecoder =
+decoder : Decoder ExamCollection
+decoder =
     Decode.dict Exam.examDecoder
 
 
+fromJson : String -> Result Error ExamCollection
 fromJson =
-    Decode.decodeString collectionDecoder
+    Decode.decodeString decoder
 
 
+fromValue : Value -> Result Error ExamCollection
 fromValue =
-    Decode.decodeValue collectionDecoder
+    Decode.decodeValue decoder

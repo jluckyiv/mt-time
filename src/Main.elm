@@ -1,22 +1,17 @@
 port module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
-import Dict exposing (Dict)
-import Duration exposing (Duration, fromString)
-import Exam exposing (..)
+import Duration exposing (Duration)
 import ExamCollection as Collection exposing (..)
 import Html
     exposing
         ( Html
         , a
-        , br
         , button
         , div
         , footer
         , header
-        , hr
         , i
-        , img
         , input
         , li
         , p
@@ -26,7 +21,6 @@ import Html
         , tbody
         , td
         , text
-        , tfoot
         , th
         , thead
         , tr
@@ -37,20 +31,28 @@ import Html.Attributes
         ( attribute
         , class
         , pattern
-        , placeholder
-        , src
         , style
         , type_
         , value
         )
 import Html.Events exposing (onClick, onInput)
-import Json.Decode as Decode exposing (Decoder)
+import Json.Decode as Decode exposing (Decoder, Error)
 import Json.Decode.Pipeline exposing (required)
-import Json.Encode as Encode exposing (Value, encode, object)
+import Json.Encode as Encode exposing (Value, object)
+import SpeechCollection exposing (SpeechCollection)
+import Speeches
+import Warning
+import WitnessExam as Exam exposing (..)
 
 
 
 ---- MODEL ----
+
+
+type TabName
+    = SpeechesTab
+    | ProsecutionTab
+    | DefenseTab
 
 
 type Party
@@ -63,21 +65,23 @@ type alias UpdateCollectionMsg =
 
 
 type alias Model =
-    { prosecution : ExamCollection
+    { speeches : SpeechCollection
+    , prosecution : ExamCollection
     , defense : ExamCollection
     , modalIsOpen : Bool
-    , currentTab : Party
+    , currentTab : TabName
     }
 
 
 initModel : Model
 initModel =
-    { prosecution =
+    { speeches = SpeechCollection.new
+    , prosecution =
         Collection.new [ "P1", "P2", "P3", "P4" ]
     , defense =
         Collection.new [ "D1", "D2", "D3", "D4" ]
     , modalIsOpen = False
-    , currentTab = Prosecution
+    , currentTab = SpeechesTab
     }
 
 
@@ -112,52 +116,57 @@ port cache : Value -> Cmd msg
 encodeModel : Model -> Value
 encodeModel model =
     object
-        [ ( "prosecution", Collection.encodeCollection model.prosecution )
-        , ( "defense", Collection.encodeCollection model.defense )
+        [ ( "prosecution", Collection.encode model.prosecution )
+        , ( "defense", Collection.encode model.defense )
         , ( "modalIsOpen", Encode.bool model.modalIsOpen )
-        , ( "currentTab", encodeParty model.currentTab )
+        , ( "speeches", SpeechCollection.encode model.speeches )
+        , ( "currentTab", encodeTabName model.currentTab )
         ]
 
 
-encodeParty : Party -> Value
-encodeParty party =
-    case party of
-        Defense ->
+encodeTabName : TabName -> Value
+encodeTabName tabName =
+    case tabName of
+        DefenseTab ->
             Encode.string "Defense"
 
-        _ ->
+        ProsecutionTab ->
             Encode.string "Prosecution"
+
+        SpeechesTab ->
+            Encode.string "Speeches"
 
 
 modelDecoder : Decoder Model
 modelDecoder =
     Decode.succeed Model
-        |> required "prosecution" Collection.collectionDecoder
-        |> required "defense" Collection.collectionDecoder
+        |> required "speeches" SpeechCollection.decoder
+        |> required "prosecution" Collection.decoder
+        |> required "defense" Collection.decoder
         |> required "modalIsOpen" Decode.bool
-        |> required "currentTab" partyDecoder
+        |> required "currentTab" tabDecoder
 
 
-partyDecoder : Decoder Party
-partyDecoder =
+tabDecoder : Decoder TabName
+tabDecoder =
     Decode.string
         |> Decode.andThen
             (\str ->
                 case str of
                     "Defense" ->
-                        Decode.succeed Defense
+                        Decode.succeed DefenseTab
+
+                    "Prosecution" ->
+                        Decode.succeed ProsecutionTab
 
                     _ ->
-                        Decode.succeed Prosecution
+                        Decode.succeed SpeechesTab
             )
 
 
+fromJson : String -> Result Error Model
 fromJson =
     Decode.decodeString modelDecoder
-
-
-fromValue =
-    Decode.decodeValue modelDecoder
 
 
 
@@ -168,13 +177,17 @@ type Msg
     = NoOp
     | ClearModel
     | ToggleModal
-    | ToggleCurrentTab
+    | ChangeCurrentTab TabName
     | UpdateProsecutionDirect KeyedExam String
     | UpdateProsecutionCross KeyedExam String
     | UpdateProsecutionRedirect KeyedExam String
     | UpdateDefenseDirect KeyedExam String
     | UpdateDefenseCross KeyedExam String
     | UpdateDefenseRedirect KeyedExam String
+    | UpdateProsecutionOpening String
+    | UpdateProsecutionClosing String
+    | UpdateDefenseOpening String
+    | UpdateDefenseClosing String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -190,17 +203,8 @@ update msg model =
             in
             ( model_, cacheModel model_ )
 
-        ToggleCurrentTab ->
-            let
-                currentTab_ =
-                    case model.currentTab of
-                        Prosecution ->
-                            Defense
-
-                        Defense ->
-                            Prosecution
-            in
-            ( { model | currentTab = currentTab_ }, Cmd.none )
+        ChangeCurrentTab tabName ->
+            ( { model | currentTab = tabName }, Cmd.none )
 
         ToggleModal ->
             let
@@ -270,6 +274,46 @@ update msg model =
             in
             ( model_, cacheModel model_ )
 
+        UpdateProsecutionOpening stringValue ->
+            let
+                model_ =
+                    { model
+                        | speeches =
+                            SpeechCollection.updateProsecutionOpening stringValue model.speeches
+                    }
+            in
+            ( model_, cacheModel model_ )
+
+        UpdateProsecutionClosing stringValue ->
+            let
+                model_ =
+                    { model
+                        | speeches =
+                            SpeechCollection.updateProsecutionClosing stringValue model.speeches
+                    }
+            in
+            ( model_, cacheModel model_ )
+
+        UpdateDefenseOpening stringValue ->
+            let
+                model_ =
+                    { model
+                        | speeches =
+                            SpeechCollection.updateDefenseOpening stringValue model.speeches
+                    }
+            in
+            ( model_, cacheModel model_ )
+
+        UpdateDefenseClosing stringValue ->
+            let
+                model_ =
+                    { model
+                        | speeches =
+                            SpeechCollection.updateDefenseClosing stringValue model.speeches
+                    }
+            in
+            ( model_, cacheModel model_ )
+
 
 
 ---- VIEW ----
@@ -279,25 +323,29 @@ view : Model -> Html Msg
 view model =
     div [ class "section" ]
         [ viewTabs model.currentTab
-        , viewPartyWorksheet model
+        , viewTab model
         , viewModal model.modalIsOpen
         ]
 
 
-viewTabs : Party -> Html Msg
+viewTabs : TabName -> Html Msg
 viewTabs party =
     let
-        ( prosecutionClass, defenseClass ) =
+        ( speechClass, prosecutionClass, defenseClass ) =
             tabClasses party
     in
     div [ class "tabs is-boxed" ]
         [ ul []
-            [ li [ class prosecutionClass ]
-                [ a [ onClick ToggleCurrentTab ]
+            [ li [ class speechClass ]
+                [ a [ onClick (ChangeCurrentTab SpeechesTab) ]
+                    [ text "Speeches" ]
+                ]
+            , li [ class prosecutionClass ]
+                [ a [ onClick (ChangeCurrentTab ProsecutionTab) ]
                     [ text "Prosecution" ]
                 ]
             , li [ class defenseClass ]
-                [ a [ onClick ToggleCurrentTab ]
+                [ a [ onClick (ChangeCurrentTab DefenseTab) ]
                     [ text "Defense" ]
                 ]
             , clearButton
@@ -305,14 +353,17 @@ viewTabs party =
         ]
 
 
-tabClasses : Party -> ( String, String )
+tabClasses : TabName -> ( String, String, String )
 tabClasses party =
     case party of
-        Prosecution ->
-            ( "is-active", "" )
+        ProsecutionTab ->
+            ( "", "is-active", "" )
 
-        Defense ->
-            ( "", "is-active" )
+        DefenseTab ->
+            ( "", "", "is-active" )
+
+        SpeechesTab ->
+            ( "is-active", "", "" )
 
 
 clearButton : Html Msg
@@ -327,41 +378,129 @@ clearButton =
 
 viewModal : Bool -> Html Msg
 viewModal modalIsOpen =
-    case modalIsOpen of
-        True ->
-            div [ class "modal is-active" ]
-                [ div [ class "modal-background", onClick ToggleModal ] []
-                , div [ class "modal-card" ]
-                    [ header [ class "modal-card-head" ]
-                        [ p [ class "modal-card-title" ]
-                            [ text "Are you sure?" ]
-                        , button [ attribute "aria-label" "close", class "delete", onClick ToggleModal ] []
-                        ]
-                    , section [ class "modal-card-body" ]
-                        [ text "This will clear the worksheet." ]
-                    , footer [ class "modal-card-foot", style "justify-content" "flex-end" ]
-                        [ button [ class "button is-danger", onClick ClearModel ]
-                            [ text "Clear" ]
-                        , button [ class "button", onClick ToggleModal ]
-                            [ text "Cancel" ]
-                        ]
+    if modalIsOpen then
+        div [ class "modal is-active" ]
+            [ div [ class "modal-background", onClick ToggleModal ] []
+            , div [ class "modal-card" ]
+                [ header [ class "modal-card-head" ]
+                    [ p [ class "modal-card-title" ]
+                        [ text "Are you sure?" ]
+                    , button [ attribute "aria-label" "close", class "delete", onClick ToggleModal ] []
+                    ]
+                , section [ class "modal-card-body" ]
+                    [ text "This will clear the worksheet." ]
+                , footer [ class "modal-card-foot", style "justify-content" "flex-end" ]
+                    [ button [ class "button is-danger", onClick ClearModel ]
+                        [ text "Clear" ]
+                    , button [ class "button", onClick ToggleModal ]
+                        [ text "Cancel" ]
                     ]
                 ]
+            ]
 
-        False ->
-            text ""
+    else
+        text ""
 
 
-viewSeparator : Html msg
-viewSeparator =
-    hr [] []
+viewTab : Model -> Html Msg
+viewTab model =
+    case model.currentTab of
+        SpeechesTab ->
+            viewSpeechesWorksheet model.speeches
+
+        ProsecutionTab ->
+            viewPartyWorksheet model
+
+        DefenseTab ->
+            viewPartyWorksheet model
+
+
+viewSpeechesWorksheet : SpeechCollection -> Html Msg
+viewSpeechesWorksheet speeches =
+    div [ class "container" ]
+        [ div [ class "title is-5" ] [ text "Opening and closing" ]
+        , viewSpeeches speeches
+        , viewRemainingProsecutionClosing "Prosecution" (Speeches.opening speeches.prosecution)
+        , viewRemainingDefenseClosing "Defense" (Speeches.opening speeches.defense)
+        ]
+
+
+viewRemainingProsecutionClosing : String -> Duration -> Html Msg
+viewRemainingProsecutionClosing side duration =
+    viewRemaining side "opening" 9 duration
+
+
+viewRemainingDefenseClosing : String -> Duration -> Html Msg
+viewRemainingDefenseClosing side duration =
+    viewRemaining side "opening" 9 duration
+
+
+viewSpeeches : SpeechCollection -> Html Msg
+viewSpeeches speeches =
+    table [ class "table" ]
+        [ viewSpeechesHead
+        , viewSpeechesBody speeches
+        ]
+
+
+viewSpeechesHead : Html Msg
+viewSpeechesHead =
+    thead []
+        [ th [ class "has-text-centered" ] [ text "Party" ]
+        , th [ class "has-text-centered" ] [ text "Opening" ]
+        , th [ class "has-text-centered" ] [ text "Closing" ]
+        ]
+
+
+viewSpeechesBody : SpeechCollection -> Html Msg
+viewSpeechesBody speeches =
+    tbody []
+        [ tr []
+            [ td [] [ text "Prosecution" ]
+            , td [] [ inputSpeech (Speeches.opening speeches.prosecution) UpdateProsecutionOpening ]
+            , td [] [ inputSpeech (Speeches.closing speeches.prosecution) UpdateProsecutionClosing ]
+            ]
+        , tr []
+            [ td [] [ text "Defense" ]
+            , td [] [ inputSpeech (Speeches.opening speeches.defense) UpdateDefenseOpening ]
+            , td [] [ inputSpeech (Speeches.closing speeches.defense) UpdateDefenseClosing ]
+            ]
+        ]
+
+
+inputSpeech : Duration -> (String -> Msg) -> Html Msg
+inputSpeech duration msg =
+    let
+        string =
+            Duration.toString duration
+
+        value_ =
+            case string of
+                "0:00" ->
+                    ""
+
+                _ ->
+                    string
+    in
+    input
+        [ type_ "tel"
+        , class "input has-text-right"
+        , pattern "[0-9]*"
+        , value value_
+        , onInput msg
+        ]
+        []
 
 
 viewPartyWorksheet : Model -> Html Msg
 viewPartyWorksheet model =
     let
         party =
-            model.currentTab
+            if model.currentTab == ProsecutionTab then
+                Prosecution
+
+            else
+                Defense
 
         partyString =
             partyToString party
@@ -376,12 +515,11 @@ viewPartyWorksheet model =
         [ div [ class "title is-5" ] [ text (partyString ++ " witnesses") ]
         , viewExamFunction party model
         , viewRemainingDirect partyString collection_
-
-        -- , viewSeparator
         , viewRemainingCross opponentString collection_
         ]
 
 
+viewExaminations : (KeyedExam -> Html Msg) -> ExamCollection -> Html Msg
 viewExaminations viewFunction collection =
     table [ class "table" ]
         [ viewExaminationsHead
@@ -443,10 +581,12 @@ inputDuration ( key, exam ) string msg =
         []
 
 
+viewRemainingDirect : String -> ExamCollection -> Html Msg
 viewRemainingDirect side collection =
     viewRemaining side "direct" 14 (Collection.totalCombinedDirect collection)
 
 
+viewRemainingCross : String -> ExamCollection -> Html Msg
 viewRemainingCross side collection =
     viewRemaining side "cross" 10 (Collection.totalCross collection)
 
@@ -457,21 +597,30 @@ viewRemaining side examType max totalDuration =
         used =
             Duration.toString totalDuration
 
+        maxDuration =
+            Duration.create max 0
+
+        remainingDuration =
+            totalDuration
+                |> Warning.remaining maxDuration
+
         remaining =
-            Duration.toString <|
-                Duration.subtract (Duration.fromMinutes max) totalDuration
+            Duration.toString remainingDuration
 
         twoMinuteWarning =
-            Duration.toString <|
-                Duration.subtract (Duration.fromMinutes <| max - 2) totalDuration
+            remainingDuration
+                |> Warning.twoMinutes
+                |> Duration.toString
 
         oneMinuteWarning =
-            Duration.toString <|
-                Duration.subtract (Duration.fromMinutes <| max - 1) totalDuration
+            remainingDuration
+                |> Warning.oneMinute
+                |> Duration.toString
 
         thirtySecondWarning =
-            Duration.toString <|
-                Duration.subtract (Duration.fromSeconds <| max * 60 - 30) totalDuration
+            remainingDuration
+                |> Warning.thirtySeconds
+                |> Duration.toString
     in
     p []
         [ span [ class "has-text-weight-bold" ] [ text side ]
@@ -548,14 +697,17 @@ partyCollection model party =
             model.defense
 
 
+updateDirect : String -> KeyedExam -> ExamCollection -> ExamCollection
 updateDirect string keyedExam collection =
     Collection.updateDirectWithString string keyedExam collection
 
 
+updateCross : String -> KeyedExam -> ExamCollection -> ExamCollection
 updateCross string keyedExam collection =
     Collection.updateCrossWithString string keyedExam collection
 
 
+updateRedirect : String -> KeyedExam -> ExamCollection -> ExamCollection
 updateRedirect string keyedExam collection =
     Collection.updateRedirectWithString string keyedExam collection
 
