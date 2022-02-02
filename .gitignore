@@ -142,3 +142,6 @@ typings/
 .dynamodb/
 
 # End of https://www.gitignore.io/api/macos,node,elm,firebase
+
+.parcel-cache
+dist
