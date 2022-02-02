@@ -9,6 +9,7 @@
     "start": "parcel",
     "build": "parcel build",
     "test": "elm-test",
+    "test:watch": "elm-test --watch",
     "postinstall": "elm-tooling install"
   },
   "devDependencies": {
